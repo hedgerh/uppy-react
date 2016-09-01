@@ -30,7 +30,7 @@
   "scripts": {
     "build": "babel src -d lib",
     "build:sourcemaps": "babel src --source-maps -d lib",
-    "start": "chokidar './src/**/*.js' -c 'npm run build:sourcemaps'",
+    "start": "npm run build:sourcemaps && chokidar './src/**/*.js' -c 'npm run build:sourcemaps'",
     "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
