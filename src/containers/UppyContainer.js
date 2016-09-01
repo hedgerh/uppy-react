@@ -1,5 +1,5 @@
 import React, { Component, PropTypes } from 'react'
-import { Provider } from 'uppy-base'
+import { Provider, Webcam } from 'uppy-base'
 
 function extend (...objs) {
   return Object.assign.apply(this, [{}].concat(objs))
@@ -9,9 +9,16 @@ class UppyContainer extends Component {
   constructor() {
     super()
 
+    this.webcam = new Webcam()
+
     this.state = {
       files: [],
-      server: {}
+      webcam: {
+        stream: null,
+        start: this.startWebcam(this.webcam),
+        stop: this.stopWebcam(this.webcam),
+        takeSnapshot: this.takeSnapshot(this.webcam)
+      }
     }
 
     // bind `this` to methods
@@ -25,6 +32,9 @@ class UppyContainer extends Component {
     this.removeFile = this.removeFile.bind(this)
     this.startUpload = this.startUpload.bind(this)
     this.checkServerProps = this.checkServerProps.bind(this)
+    this.startWebcam = this.startWebcam.bind(this)
+    this.stopWebcam = this.stopWebcam.bind(this)
+    this.takeSnapshot = this.takeSnapshot.bind(this)
     this._update = this._update.bind(this)
   }
 
@@ -40,6 +50,8 @@ class UppyContainer extends Component {
         providers: this.getInitialProviderState(this.providers)
       })
     }
+
+    this.webcam.init()
   }
 
 
@@ -53,14 +65,18 @@ class UppyContainer extends Component {
    * @param  {String}   endpoint  Target endpoint for file uploads
    * @return {Uploader}           Instance of given uploader plugin
    */
-  getUploader (uploader, endpoint) {
+  getUploader (uploader) {
     if (!uploader) {
-      throw new Error('UppyContainer: No uploader plugin provided.')
+      throw new Error('UppyContainer: Missing uploader prop.')
       return
     }
+    if (!uploader.use) {
+      throw new Error('UppyContainer: No upload plugin provided to uploader.use prop')
+      return
+    } 
 
-    if (!endpoint) {
-      throw new Error('UppyContainer: No upload endpoint provided.')
+    if (!uploader.endpoint) {
+      throw new Error('UppyContainer: No upload endpoint provided to uploader.endpoint prop')
       return
     }
 
@@ -68,7 +84,7 @@ class UppyContainer extends Component {
 
     // TODO: error check to make sure uploader is legit
     return new Uploader({
-      endpoint: endpoint
+      endpoint: uploader.endpoint
     })
   }
 
@@ -141,7 +157,6 @@ class UppyContainer extends Component {
   /**
    * Uppy Server Provider Plugin Wrappers
    */
-
   /**
    * Checks authentication status of user with given provider.
    * Wraps Provider's `auth` method to handle updating state after calling.
@@ -199,6 +214,52 @@ class UppyContainer extends Component {
 
         return result
       })
+    }
+  }
+
+
+  /**
+   * Webcam Plugin Wrappers
+   */
+  
+  /**
+   * Starts webcam and adds video stream to state.
+   * @param  {Webcam} webcam Webcam plugin instance
+   * @return {fn}            Wrapped start method
+   */
+  startWebcam (webcam) {
+    return () => {
+      return webcam.start()
+      .then((stream) => {
+        this._update('webcam', { stream: stream })
+      })
+    }
+  }
+
+  /**
+   * Stops webcam and removes video stream from state.
+   * @param  {Webcam} webcam  Webcam plugin instance
+   * @return {fn}             Wrapped stop method
+   */
+  stopWebcam (webcam) {
+    return () => {
+      return webcam.stop()
+      .then((result) => {
+        if (result.ok) {
+          this._update('webcam', { stream: null })
+        }
+      })
+    }
+  }
+
+  /**
+   * Takes a snapshot from the webcam's video stream.
+   * @param  {Webcam} webcam  Webcam plugin instance
+   * @return {fn}             Wrapped takeSnapshot method
+   */
+  takeSnapshot (webcam) {
+    return () => {
+
     }
   }
 
