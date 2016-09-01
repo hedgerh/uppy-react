@@ -1,2 +1,6 @@
-export { UppyContainer as UppyContainer } from './containers'
-export { UppyInput as UppyInput } from './components'
+'use strict'
+
+module.exports = {
+  UppyInput: require('./components/UppyInput'),
+  UppyContainer: require('./containers/UppyContainer')
+}
