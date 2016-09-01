@@ -40,4 +40,4 @@ FormInput.propTypes = {
   addFile: PropTypes.func.isRequired
 }
 
-export default FormInput
+module.exports = FormInput

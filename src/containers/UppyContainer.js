@@ -79,4 +79,4 @@ UppyContainer.defaultProps = {}
 
 UppyContainer.propTypes = {}
 
-export default UppyContainer
+module.exports = UppyContainer
