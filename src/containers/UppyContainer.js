@@ -1,41 +1,239 @@
 import React, { Component, PropTypes } from 'react'
+import { Provider } from 'uppy-base'
+
+function extend (...objs) {
+  return Object.assign.apply(this, [{}].concat(objs))
+}
 
 class UppyContainer extends Component {
   constructor() {
     super()
+
     this.state = {
-      files: []
+      files: [],
+      server: {}
     }
 
+    // bind `this` to methods
     this.addFile = this.addFile.bind(this)
+    this.auth = this.auth.bind(this)
+    this.getInitialProviderState = this.getInitialProviderState.bind(this)
+    this.getProviders = this.getProviders.bind(this)
+    this.getUploader = this.getUploader.bind(this)
+    this.list = this.list.bind(this)
+    this.logout = this.logout.bind(this)
     this.removeFile = this.removeFile.bind(this)
     this.startUpload = this.startUpload.bind(this)
+    this.checkServerProps = this.checkServerProps.bind(this)
+    this._update = this._update.bind(this)
   }
 
-  componentWillMount () {
-    const {uploader, endpoint} = this.props
+  componentDidMount () {
+    const { uploader, server } = this.props
+    this.uploader = this.getUploader(uploader)
 
-    if (!uploader || !endpoint) {
-      console.log('ERROR: Uploader or endpoint not defined')
+    if (this.checkServerProps(server)) {
+      const { providers, host } = server
+
+      this.providers = this.getProviders(providers, host)
+      this.setState({
+        providers: this.getInitialProviderState(this.providers)
+      })
+    }
+  }
+
+
+  /**
+   * Initialization Helpers - Pretty boring stuff
+   */
+
+  /**
+   * Creates a new instance of the given Uploader plugin.
+   * @param  {Uploader} uploader  Uppy plugin of 'uploader' type
+   * @param  {String}   endpoint  Target endpoint for file uploads
+   * @return {Uploader}           Instance of given uploader plugin
+   */
+  getUploader (uploader, endpoint) {
+    if (!uploader) {
+      throw new Error('UppyContainer: No uploader plugin provided.')
       return
     }
 
-    const Uploader = uploader
-    this.uploader = new Uploader({ endpoint })
+    if (!endpoint) {
+      throw new Error('UppyContainer: No upload endpoint provided.')
+      return
+    }
+
+    const Uploader = uploader.use
+
+    // TODO: error check to make sure uploader is legit
+    return new Uploader({
+      endpoint: endpoint
+    })
   }
 
-  componentWillReceiveProps (nextProps) {
-    if (nextProps.uploader !== this.props.uploader) {
-      this.uploader = new Uploader({
-        endpoint: nextProps.endpoint
+  /**
+   * Creates new Provider instances for each
+   * given provider name.
+   * @param  {Array<String>} providers  Provider names
+   * @param  {String} host              Endpoint for Uppy Server
+   * @return {Object}                   Provider instances
+   */
+  getProviders (providers, host) {
+    let _providers = {}
+
+    providers.forEach((provider) => {
+      if (!_providers.hasOwnProperty(provider)) {
+        _providers[provider] = new Provider({
+          provider: provider,
+          host: host
+        })
+      }
+    })
+
+    return _providers
+  }
+
+  /**
+   * Generates an initial state for all of the given
+   * provider plugins.
+   * @param  {Object} providers Provider plugins
+   * @return {Object}           Initial provider state
+   */
+  getInitialProviderState (providers) {
+    let initialState = {}
+
+    if (providers) {
+      Object.keys(providers).forEach((id) => {
+        const provider = providers[id]
+        initialState[id] = {
+          id,
+          name: provider.name,
+          files: [],
+          authed: false,
+          auth: this.auth(provider),
+          list: this.list(provider),
+          logout: this.logout(provider)
+        }
       })
     }
 
-    if (nextProps.endpoint !== this.props.endpoint) {
-      this.uploader.opts.endpoint = nextProps.endpoint
+    return initialState
+  }
+
+  /**
+   * Checks if valid server props have been provided.
+   * @param  {[type]} server [description]
+   * @return {[type]}        [description]
+   */
+  checkServerProps (server) {
+    if (!server) { 
+      return false 
+    }
+
+    if (!server.providers || !server.host) {
+      return false
+    }
+
+    return (server.providers.length > 0 && typeof server.host === 'string')
+  }
+
+  /**
+   * Uppy Server Provider Plugin Wrappers
+   */
+
+  /**
+   * Checks authentication status of user with given provider.
+   * Wraps Provider's `auth` method to handle updating state after calling.
+   * after calling.  
+   * Wrapped method is passed down to user as props.
+   * @param  {Provider} provider Provider plugin
+   * @return {fn}                Wrapped auth fn
+   */
+  auth (provider) {
+    return () => {
+      return provider.auth()
+      .then((authed) => {
+        this._update(provider.id, { authed }, 'providers')
+        return authed
+      })
+    }
+  }
+
+  /**
+   * Fetches a list of files from provider.
+   * Wraps Provider's `list` method to handle updating state after calling.
+   * Wrapped method is passed down to user as props.
+   * @param  {Provider} provider Provider plugin
+   * @return {fn}                Wrapped auth fn
+   */
+  list (provider) {
+    return (directory) => {
+      return provider.list(directory)
+      .then((data) => {
+        const files = this.procFiles(data)
+        this._update(provider.id, files)
+        return files
+      })
+    }
+  }
+
+  /**
+   * Logs user out of given provider.
+   * Wraps Provider's `logout` method to handle updating state after calling.
+   * Wrapped method is passed down to user as props.
+   * @param  {Provider} provider Provider plugin
+   * @return {fn}                Wrapped auth fn
+   */
+  logout (provider) {
+    return () => {
+      return provider.logout()
+      .then((result) => {
+        if (result.ok) {
+          this._update(provider.id, { 
+            authed: false,
+            files: [],
+            folders: [] 
+          })
+        }
+
+        return result
+      })
+    }
+  }
+
+  /**
+   * Wrapper for updating state, even state that is
+   * nested.
+   * @param  {String} key       State key to update
+   * @param  {[type]} newState  Replaces old state at key
+   * @param  {[type]} parentKey Key of parent if key is nested
+   */
+  _update (key, newState, parentKey) {
+    // TODO: Make deep nested updates prettier
+    // TODO: Make nested updates infinitely deep
+    if (parentKey) {
+      const parent = this.state[parentKey]
+      const updatedState = extend(parent[key], newState)
+
+      this.setState({
+        [parentKey]: extend(parent, {
+          [key]: updatedState
+        })
+      })
+    } else {
+      const updatedState = extend(this.state[key], newState)
+
+      this.setState({
+        [key]: updatedState
+      })
     }
   }
   
+  /**
+   * Add a file to the upload queue.
+   * @param {File} file
+   */
   addFile (file) {
     const {files} = this.state
     this.setState({
@@ -43,6 +241,10 @@ class UppyContainer extends Component {
     })
   }
 
+  /**
+   * Remove a file from the upload queue.
+   * @param  {String} fileID
+   */
   removeFile (fileID) {
     const filteredFiles = this.state.files.filter((file) => {
       return file.id !== fileID
@@ -52,24 +254,24 @@ class UppyContainer extends Component {
       files: filteredFiles
     })
   }
-  
+
+  /**
+   * Start uploading the files in queue.
+   * @return {Promise} Resolves when all uploads are completed.
+   */
   startUpload() {
-    this.uploader.start(this.state.files)
+    return this.uploader.start(this.state.files)
   }
   
   render () {
-    const {children} = this.props
-    const propsToPass = {
-      files: this.state.files,
+    const propsToPass = extend(this.state, {
       addFile: this.addFile,
       removeFile: this.removeFile,
       startUpload: this.startUpload
-    }
-    console.log(React.Children.map(children, (child) => React.cloneElement(child, propsToPass)))
+    })
     return (
-      // probably should only allow this.props.children.length === 1
       <div>
-        { children.length > 1 ? React.Children.map(this.props.children, (child) => React.cloneElement(child, propsToPass)) : React.cloneElement(children, propsToPass) }
+        { React.Children.map(this.props.children, (child) => React.cloneElement(child, propsToPass)) }
       </div>
     )
   }
