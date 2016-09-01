@@ -37,7 +37,7 @@ class FormInput extends Component {
 }
 
 FormInput.propTypes = {
-  addFile: PropTypes.fun.isRequired
+  addFile: PropTypes.func.isRequired
 }
 
 export default FormInput

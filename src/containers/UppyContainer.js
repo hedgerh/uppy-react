@@ -58,17 +58,18 @@ class UppyContainer extends Component {
   }
   
   render () {
+    const {children} = this.props
     const propsToPass = {
       files: this.state.files,
       addFile: this.addFile,
       removeFile: this.removeFile,
       startUpload: this.startUpload
     }
-
+    console.log(React.Children.map(children, (child) => React.cloneElement(child, propsToPass)))
     return (
       // probably should only allow this.props.children.length === 1
       <div>
-        { React.Children.map(this.props.children, (child) => React.cloneElement(child, propsToPass)) }
+        { children.length > 1 ? React.Children.map(this.props.children, (child) => React.cloneElement(child, propsToPass)) : React.cloneElement(children, propsToPass) }
       </div>
     )
   }
