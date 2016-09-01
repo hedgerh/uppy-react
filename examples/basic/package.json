@@ -8,7 +8,8 @@
   "dependencies": {
     "react": "^15.3.1",
     "react-dom": "^15.3.1",
-    "uppy-base": "git+https://github.com/hedgerh/uppy-base.git"
+    "uppy-base": "git+https://github.com/hedgerh/uppy-base.git",
+    "uppy-react": "git+https://github.com/hedgerh/uppy-react.git"
   },
   "devDependencies": {
     "babel-core": "^6.3.15",
