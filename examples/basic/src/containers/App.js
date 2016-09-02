@@ -44,4 +44,15 @@ class App extends Component {
   }
 }
 
+App.defaultProps = {
+  files: []
+}
+
+App.propTypes = {
+  files: PropTypes.array,
+  addFile: PropTypes.func,
+  removeFile: PropTypes.func,
+  startUpload: PropTypes.func
+}
+
 export default App

@@ -4,7 +4,7 @@ var webpack = require('webpack')
 console.log(__dirname)
 
 module.exports = {
-  devtool: 'cheap-module-eval-source-map',
+  devtool: 'eval',
   entry: [
     'webpack-hot-middleware/client',
     './index'

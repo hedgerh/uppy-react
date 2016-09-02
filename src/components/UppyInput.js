@@ -1,5 +1,5 @@
 import React, { Component, PropTypes } from 'react'
-const { toArray } = require('uppy-utils')
+import { toArray } from 'uppy-utils'
 
 class FormInput extends Component {
   constructor() {
@@ -13,8 +13,7 @@ class FormInput extends Component {
       return 'Error: No addFile method provided!'
     }
 
-    const files = toArray(event.target.files)
-    // const files = Array.prototype.slice.call(event.target.files || [], 0)
+    const files = Array.prototype.slice.call(event.target.files || [], 0)
 
     files.forEach((file) => {
       this.props.addFile({
@@ -26,12 +25,20 @@ class FormInput extends Component {
   }
 
   render () {
+    let propsToPass = {}
+
+    // filtering out the addFile and children props to pass to our input element
+    Object.keys(this.props).forEach((prop) => {
+      if (prop !== 'children' && prop !== 'addFile') {
+        propsToPass[prop] = this.props[prop]
+      }
+    })
     return (
       <input 
         type='file'
         name='files[]'
-        onChange={this.addFile}
-        {...this.props}/>
+        {...propsToPass}
+        onChange={this.addFile}/>
     )
   }
 }
