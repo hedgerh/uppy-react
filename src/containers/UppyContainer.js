@@ -1,9 +1,6 @@
 import React, { Component, PropTypes } from 'react'
 import { Provider, Webcam } from 'uppy-base'
-
-function extend (...objs) {
-  return Object.assign.apply(this, [{}].concat(objs))
-}
+import extend from '../utils/extend'
 
 class UppyContainer extends Component {
   constructor() {
@@ -54,10 +51,7 @@ class UppyContainer extends Component {
     this.webcam.init()
   }
 
-
-  /**
-   * Initialization Helpers - Pretty boring stuff
-   */
+  // Initialization Helpers
 
   /**
    * Creates a new instance of the given Uploader plugin.
@@ -81,7 +75,6 @@ class UppyContainer extends Component {
     }
 
     const Uploader = uploader.use
-
     // TODO: error check to make sure uploader is legit
     return new Uploader({
       endpoint: uploader.endpoint
@@ -111,7 +104,7 @@ class UppyContainer extends Component {
   }
 
   /**
-   * Generates an initial state for all of the given
+   * Generates the initial state for all of the given
    * provider plugins.
    * @param  {Object} providers Provider plugins
    * @return {Object}           Initial provider state
@@ -143,14 +136,8 @@ class UppyContainer extends Component {
    * @return {[type]}        [description]
    */
   checkServerProps (server) {
-    if (!server) { 
-      return false 
-    }
-
-    if (!server.providers || !server.host) {
-      return false
-    }
-
+    if (!server) { return false }
+    if (!server.providers || !server.host) { return false }
     return (server.providers.length > 0 && typeof server.host === 'string')
   }
 
@@ -291,10 +278,6 @@ class UppyContainer extends Component {
     }
   }
   
-  /**
-   * Add a file to the upload queue.
-   * @param {File} file
-   */
   addFile (file) {
     const {files} = this.state
     this.setState({
@@ -302,14 +285,21 @@ class UppyContainer extends Component {
     })
   }
 
-  /**
-   * Remove a file from the upload queue.
-   * @param  {String} fileID
-   */
-  removeFile (fileID) {
-    const filteredFiles = this.state.files.filter((file) => {
-      return file.id !== fileID
+  addFile (evt) {
+    const files = Array.prototype.slice.call(evt.target.files || [], 0)
+
+    files.forEach((file) => {
+      this.props.addFile({
+        name: file.name,
+        type: file.type,
+        data: file
+      })
     })
+  }
+
+  removeFile (fileID) {
+    const {files} = this.state
+    const filteredFiles = files.filter((file) => file.id !== fileID)
 
     this.setState({
       files: filteredFiles
