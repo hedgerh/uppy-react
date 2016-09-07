@@ -8,7 +8,7 @@ class App extends Component {
 
     this.state = {
       modalOpen: false,
-      activeModalTab: 'local'
+      activeTab: 'local'
     }
 
     this.addFile = this.addFile.bind(this)
@@ -22,25 +22,11 @@ class App extends Component {
     })
   }
 
-  handleTabClick (tabID) {
-    if (!tabID) {
-      return
-    }
+  handleTabClick (id) {
+    if (!tabID) { return }
 
     this.setState({
-      activeModalTab: tabID
-    })
-  }
-
-  addFile (evt) {
-    const files = Array.prototype.slice.call(evt.target.files || [], 0)
-
-    files.forEach((file) => {
-      this.props.addFile({
-        name: file.name,
-        type: file.type,
-        data: file
-      })
+      activeTab: id
     })
   }
 
@@ -51,9 +37,16 @@ class App extends Component {
         <button onClick={this.toggleModal}>Toggle Modal!</button>
         <UppyModal
           open={this.state.modalOpen}
-          activeTab={this.state.activeModalTab}
+          activeTab={this.state.activeTab}
           handleTabClick={this.handleTabClick}
-          {...this.props}
+          panes=[{ 
+            name: 'Google Drive', 
+            id: 'google',
+            files: [],
+            icon: '',
+            component: FileBrowser
+          },
+          ]
           addFile={this.addFile}/>
       </div>
     )
