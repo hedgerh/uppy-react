@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from 'react'
 import UppyModal from '../u/containers/UppyModal'
+import FileBrowser from '../u/components/FileBrowser'
 // import UppyDashboard from '../u/containers/UppyDashboard'
 
 class App extends Component {
@@ -8,12 +9,17 @@ class App extends Component {
 
     this.state = {
       modalOpen: false,
-      activeTab: 'local'
+      activeTab: 'dashboard'
     }
 
-    this.addFile = this.addFile.bind(this)
     this.toggleModal = this.toggleModal.bind(this)
     this.handleTabClick = this.handleTabClick.bind(this)
+  }
+
+  componentWillReceiveProps (nextProps) {
+    if (nextProps.uppy.files.length !== this.props.uppy.files.length) {
+      this.handleTabClick('dashboard')
+    }
   }
 
   toggleModal () {
@@ -23,7 +29,7 @@ class App extends Component {
   }
 
   handleTabClick (id) {
-    if (!tabID) { return }
+    if (!id) { return }
 
     this.setState({
       activeTab: id
@@ -37,24 +43,12 @@ class App extends Component {
         <button onClick={this.toggleModal}>Toggle Modal!</button>
         <UppyModal
           open={this.state.modalOpen}
-          activeTab={this.state.activeTab}
+          active={this.state.activeTab}
           handleTabClick={this.handleTabClick}
-          panes=[{ 
-            name: 'Google Drive', 
-            id: 'google',
-            files: [],
-            icon: '',
-            component: FileBrowser
-          },
-          ]
-          addFile={this.addFile}/>
+          {...this.props.uppy}/>
       </div>
     )
   }
-}
-
-App.defaultProps = {
-  files: []
 }
 
 export default App

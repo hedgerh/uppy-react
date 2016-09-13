@@ -10,11 +10,13 @@ class UppyContainer extends Component {
 
     this.state = {
       files: [],
-      webcam: {
-        stream: null,
-        start: this.startWebcam(this.webcam),
-        stop: this.stopWebcam(this.webcam),
-        takeSnapshot: this.takeSnapshot(this.webcam)
+      sources: {
+        webcam: {
+          stream: null,
+          start: this.startWebcam(this.webcam),
+          stop: this.stopWebcam(),
+          takeSnapshot: this.takeSnapshot(this.webcam)
+        }
       }
     }
 
@@ -22,13 +24,13 @@ class UppyContainer extends Component {
     this.addFile = this.addFile.bind(this)
     this.auth = this.auth.bind(this)
     this.getInitialProviderState = this.getInitialProviderState.bind(this)
-    this.getProviders = this.getProviders.bind(this)
+    this.createProviders = this.createProviders.bind(this)
     this.getUploader = this.getUploader.bind(this)
     this.list = this.list.bind(this)
     this.logout = this.logout.bind(this)
     this.removeFile = this.removeFile.bind(this)
     this.startUpload = this.startUpload.bind(this)
-    this.checkServerProps = this.checkServerProps.bind(this)
+    this.validServerProps = this.validServerProps.bind(this)
     this.startWebcam = this.startWebcam.bind(this)
     this.stopWebcam = this.stopWebcam.bind(this)
     this.takeSnapshot = this.takeSnapshot.bind(this)
@@ -39,12 +41,13 @@ class UppyContainer extends Component {
     const { uploader, server } = this.props
     this.uploader = this.getUploader(uploader)
 
-    if (this.checkServerProps(server)) {
+    if (this.validServerProps(server)) {
       const { providers, host } = server
 
-      this.providers = this.getProviders(providers, host)
+      this.providers = this.createProviders(providers, host)
+
       this.setState({
-        providers: this.getInitialProviderState(this.providers)
+        sources: extend(this.state.sources, this.getInitialProviderState(this.providers))
       })
     }
 
@@ -77,7 +80,8 @@ class UppyContainer extends Component {
     const Uploader = uploader.use
     // TODO: error check to make sure uploader is legit
     return new Uploader({
-      endpoint: uploader.endpoint
+      endpoint: uploader.endpoint,
+      remoteHost: this.props.server.host || null
     })
   }
 
@@ -88,7 +92,7 @@ class UppyContainer extends Component {
    * @param  {String} host              Endpoint for Uppy Server
    * @return {Object}                   Provider instances
    */
-  getProviders (providers, host) {
+  createProviders (providers, host) {
     let _providers = {}
 
     providers.forEach((provider) => {
@@ -104,8 +108,7 @@ class UppyContainer extends Component {
   }
 
   /**
-   * Generates the initial state for all of the given
-   * provider plugins.
+   * Initialize state for provider plugins.
    * @param  {Object} providers Provider plugins
    * @return {Object}           Initial provider state
    */
@@ -122,7 +125,8 @@ class UppyContainer extends Component {
           authed: false,
           auth: this.auth(provider),
           list: this.list(provider),
-          logout: this.logout(provider)
+          logout: this.logout(provider),
+          authURL: `${this.props.server.host}/connect/${id}`
         }
       })
     }
@@ -135,14 +139,14 @@ class UppyContainer extends Component {
    * @param  {[type]} server [description]
    * @return {[type]}        [description]
    */
-  checkServerProps (server) {
+  validServerProps (server) {
     if (!server) { return false }
     if (!server.providers || !server.host) { return false }
     return (server.providers.length > 0 && typeof server.host === 'string')
   }
 
   /**
-   * Uppy Server Provider Plugin Wrappers
+   * Uppy Server Helper Methods
    */
   /**
    * Checks authentication status of user with given provider.
@@ -156,7 +160,7 @@ class UppyContainer extends Component {
     return () => {
       return provider.auth()
       .then((authed) => {
-        this._update(provider.id, { authed }, 'providers')
+        this._update(provider.id, { authed }, 'sources')
         return authed
       })
     }
@@ -173,9 +177,10 @@ class UppyContainer extends Component {
     return (directory) => {
       return provider.list(directory)
       .then((data) => {
-        const files = this.procFiles(data)
-        this._update(provider.id, files)
-        return files
+        console.log(data)
+        // const files = this.processFiles(data)
+        this._update(provider.id, { files: data.items }, 'sources')
+        return data
       })
     }
   }
@@ -196,7 +201,7 @@ class UppyContainer extends Component {
             authed: false,
             files: [],
             folders: [] 
-          })
+          }, 'sources')
         }
 
         return result
@@ -208,7 +213,7 @@ class UppyContainer extends Component {
   /**
    * Webcam Plugin Wrappers
    */
-  
+
   /**
    * Starts webcam and adds video stream to state.
    * @param  {Webcam} webcam Webcam plugin instance
@@ -218,7 +223,7 @@ class UppyContainer extends Component {
     return () => {
       return webcam.start()
       .then((stream) => {
-        this._update('webcam', { stream: stream })
+        this._update('webcam', { stream: stream }, 'sources')
       })
     }
   }
@@ -228,14 +233,25 @@ class UppyContainer extends Component {
    * @param  {Webcam} webcam  Webcam plugin instance
    * @return {fn}             Wrapped stop method
    */
-  stopWebcam (webcam) {
+  stopWebcam () {
     return () => {
-      return webcam.stop()
-      .then((result) => {
-        if (result.ok) {
-          this._update('webcam', { stream: null })
-        }
-      })
+      const {stream} = this.state.sources.webcam
+      const tracks = stream.getVideoTracks()
+
+      if (stream.stop) {
+        stream.stop()
+      } else if (stream.msStop) {
+        stream.msStop()
+      } else {
+        tracks[0].stop()
+        tracks.forEach((track) => {
+          track.stop()
+          stream.removeTrack(track)
+        })
+      }
+
+      this._update('webcam', { stream: null }, 'sources')
+      return true
     }
   }
 
@@ -285,18 +301,6 @@ class UppyContainer extends Component {
     })
   }
 
-  addFile (evt) {
-    const files = Array.prototype.slice.call(evt.target.files || [], 0)
-
-    files.forEach((file) => {
-      this.props.addFile({
-        name: file.name,
-        type: file.type,
-        data: file
-      })
-    })
-  }
-
   removeFile (fileID) {
     const {files} = this.state
     const filteredFiles = files.filter((file) => file.id !== fileID)
@@ -315,14 +319,20 @@ class UppyContainer extends Component {
   }
   
   render () {
-    const propsToPass = extend(this.state, {
+    if (React.Children.count(this.props.children) > 1) {
+      throw new Error('Uppy: UppyContainer should have no more than one child.')
+      return
+    }
+
+    const uppyProps = extend(this.state, {
       addFile: this.addFile,
       removeFile: this.removeFile,
       startUpload: this.startUpload
     })
+
     return (
       <div>
-        { React.Children.map(this.props.children, (child) => React.cloneElement(child, propsToPass)) }
+        { React.Children.map(this.props.children, (child) => React.cloneElement(child, { uppy: uppyProps })) }
       </div>
     )
   }

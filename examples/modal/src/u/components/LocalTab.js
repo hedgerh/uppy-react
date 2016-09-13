@@ -20,16 +20,23 @@ class LocalTab extends Component {
   }
 
   render () {
+    const {name, icon, handleInputChange} = this.props
     return (
-      <li>
-        <button
-          onClick={this.handleClick}>{this.props.name}</button>
-        <input
-          type='file'
-          name='files[0]'
-          onChange={this.props.handleInputChange}
-          style={{ display: 'none' }} 
-          ref={(c) => this._input = c }/>
+      <li className='UppyDashboardTab'>
+        <button className='UppyDashboardTab-btn UppyDashboard-focus'
+                role='tab'
+                tabIndex='0'
+                onClick={this.handleClick}>
+          {this.props.icon ? this.props.icon : null}
+          <h5 className='UppyDashboardTab-name'>{this.props.name}</h5>
+        </button>
+        <input className='UppyDashboard-input' 
+               type='file' 
+               name='files[]' 
+               multiple='true' 
+               style={{ display: 'none' }}
+               ref={(c) => this._input = c }
+               onChange={this.props.handleInputChange}/>
       </li>
     )
   }

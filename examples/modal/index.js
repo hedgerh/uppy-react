@@ -15,8 +15,12 @@ const initialProps = {
   }
 }
 
-render(
-  <UppyContainer {...initialProps}>
-    <App/>
-  </UppyContainer>, document.getElementById('root')
-)
+const Root = () => {
+  return (
+    <UppyContainer {...initialProps}>
+      <App/>
+    </UppyContainer>
+  )
+}
+
+render(<Root/>, document.getElementById('root'))

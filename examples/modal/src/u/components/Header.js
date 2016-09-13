@@ -1,33 +1,51 @@
-import React, { PropTypes } from 'react'
+import React, { Component, PropTypes } from 'react'
 import Tab from './Tab'
 import LocalTab from './LocalTab'
 
-const _renderTabs = ({ tabs, addFile, handleTabClick }) => {
-  if (!tabs || !tabs.map) { return }
+class Header extends Component {
+  constructor () {
+    super()
 
-  return tabs.map((tab) => {
-    if (tab.id === 'local') {
+    this.renderTabs = this.renderTabs.bind(this)
+  }
+
+  renderTabs () {
+    const { tabs, addFile, handleTabClick } = this.props
+
+    if (!tabs || !tabs.map) { return }
+
+    return tabs.map((tab) => {
+      if (tab.id === 'dashboard') {
+        return (
+          <LocalTab
+            key={tab.id}
+            handleClick={() => handleTabClick(tab.id)} 
+            handleInputChange={addFile}
+            {...tab}/>
+        )
+      }
+
       return (
-        <LocalTab
-          key={tab.id}
-          handleClick={handleTabClick} 
-          handleInputChange={addFile}
+        <Tab 
+          key={tab.id} 
+          handleClick={() => handleTabClick(tab.id)} 
           {...tab}/>
       )
-    }
+    })
+  }
 
-    return <Tab key={tab.id} handleClick={handleTabClick} {...tab}/>
-  })
-}
-
-const Header = (props) => {
-  return (
-    <div>
-      <ul>
-        { _renderTabs(props) }
-      </ul>
-    </div>
-  )
+  render () {
+    return (
+      <div className='UppyDashboardTabs'>
+        <h3 className='UppyDashboardTabs-title'>Drop files here, paste or import from</h3>
+        <nav>
+          <ul className='UppyDashboardTabs-list' role='tablist'>
+            { this.renderTabs() }
+          </ul>
+        </nav>
+      </div>
+    )
+  }
 }
 
 Header.defaultProps = {
