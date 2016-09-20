@@ -117,11 +117,7 @@ class UppyContainer extends Component {
       return provider.logout()
       .then((result) => {
         if (result.ok) {
-          this.setIn(provider.id, {
-            authed: false,
-            files: [],
-            folders: []
-          }, 'sources')
+          this.setIn(provider.id, provider.getInitialState(), 'sources')
         }
 
         return result
