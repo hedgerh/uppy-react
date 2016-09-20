@@ -1,18 +1,32 @@
 import React from 'react'
 import { render } from 'react-dom'
-import { Tus10 } from 'uppy-base'
+import { Tus10, Remote, Webcam } from 'uppy-base'
 import { UppyContainer } from 'uppy-react'
 import App from './src/containers/App'
 
+const googleDrive = new Remote({ source: 'google' })
+const instagram = new Remote({ source: 'instagram' })
+const webcam = new Webcam({})
+
 const initialProps = {
-  uploader: {
-    use: Tus10,
-    endpoint: 'http://master.tus.io:8080/files/'
-  },
-  server: {
+  uploader: Tus10,
+  endpoint: 'http://master.tus.io:8080/files',
+  remote: {
     host: 'http://localhost:3020',
-    providers: ['google', 'instagram']
-  }
+    onList: () => {},
+    onAuth: () => {},
+    onLogout: () => {},
+  },
+  sources: [
+    webcam,
+    googleDrive,
+    instagram
+  ],
+  onAddFile: () => {},
+  onRemoveFile: () => {},
+  onUploadStart: () => {},
+  onProgress: () => {},
+  onSuccess: () => {}
 }
 
 const Root = () => {

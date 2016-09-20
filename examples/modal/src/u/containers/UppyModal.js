@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Dashboard from '../components/Dashboard'
 import FileBrowser from '../components/FileBrowser'
 import Webcam from '../components/Webcam'
+// const { defaultIcon, dashboardIcon, webcamIcon, googleIcon } from '../components/icons'
 
 const _sources = {
   default: {

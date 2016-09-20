@@ -3,28 +3,11 @@ import { Provider, Webcam } from 'uppy-base'
 import extend from '../utils/extend'
 
 class UppyContainer extends Component {
-  constructor() {
-    super()
-
-    this.webcam = new Webcam()
-
-    this.state = {
-      files: [],
-      sources: {
-        webcam: {
-          stream: null,
-          start: this.startWebcam(this.webcam),
-          stop: this.stopWebcam(),
-          takeSnapshot: this.takeSnapshot(this.webcam)
-        }
-      }
-    }
-
-    // bind `this` to methods
+  constructor(props, context) {
+    super(props, context)
     this.addFile = this.addFile.bind(this)
     this.auth = this.auth.bind(this)
     this.getInitialProviderState = this.getInitialProviderState.bind(this)
-    this.createProviders = this.createProviders.bind(this)
     this.getUploader = this.getUploader.bind(this)
     this.list = this.list.bind(this)
     this.logout = this.logout.bind(this)
@@ -34,24 +17,29 @@ class UppyContainer extends Component {
     this.startWebcam = this.startWebcam.bind(this)
     this.stopWebcam = this.stopWebcam.bind(this)
     this.takeSnapshot = this.takeSnapshot.bind(this)
-    this._update = this._update.bind(this)
+    this.setIn = this.setIn.bind(this)
+
+    this.state = this.getInitialState()
   }
 
   componentDidMount () {
-    const { uploader, server } = this.props
-    this.uploader = this.getUploader(uploader)
+  }
 
-    if (this.validServerProps(server)) {
-      const { providers, host } = server
+  getInitialState () {
+    let sourceState = {}
 
-      this.providers = this.createProviders(providers, host)
+    this.props.sources.forEach((source) => {
+      if (sourceState.hasOwnProperty(source.id)) {
+        throw new Error(`Duplicate source ids for ${source.id}`)
+      }
 
-      this.setState({
-        sources: extend(this.state.sources, this.getInitialProviderState(this.providers))
-      })
+      sourceState[source.id] = source.getInitialState()
+    })
+
+    return {
+      files: [],
+      sources: sourceState
     }
-
-    this.webcam.init()
   }
 
   // Initialization Helpers
@@ -63,75 +51,7 @@ class UppyContainer extends Component {
    * @return {Uploader}           Instance of given uploader plugin
    */
   getUploader (uploader) {
-    if (!uploader) {
-      throw new Error('UppyContainer: Missing uploader prop.')
-      return
-    }
-    if (!uploader.use) {
-      throw new Error('UppyContainer: No upload plugin provided to uploader.use prop')
-      return
-    } 
 
-    if (!uploader.endpoint) {
-      throw new Error('UppyContainer: No upload endpoint provided to uploader.endpoint prop')
-      return
-    }
-
-    const Uploader = uploader.use
-    // TODO: error check to make sure uploader is legit
-    return new Uploader({
-      endpoint: uploader.endpoint,
-      remoteHost: this.props.server.host || null
-    })
-  }
-
-  /**
-   * Creates new Provider instances for each
-   * given provider name.
-   * @param  {Array<String>} providers  Provider names
-   * @param  {String} host              Endpoint for Uppy Server
-   * @return {Object}                   Provider instances
-   */
-  createProviders (providers, host) {
-    let _providers = {}
-
-    providers.forEach((provider) => {
-      if (!_providers.hasOwnProperty(provider)) {
-        _providers[provider] = new Provider({
-          provider: provider,
-          host: host
-        })
-      }
-    })
-
-    return _providers
-  }
-
-  /**
-   * Initialize state for provider plugins.
-   * @param  {Object} providers Provider plugins
-   * @return {Object}           Initial provider state
-   */
-  getInitialProviderState (providers) {
-    let initialState = {}
-
-    if (providers) {
-      Object.keys(providers).forEach((id) => {
-        const provider = providers[id]
-        initialState[id] = {
-          id,
-          name: provider.name,
-          files: [],
-          authed: false,
-          auth: this.auth(provider),
-          list: this.list(provider),
-          logout: this.logout(provider),
-          authURL: `${this.props.server.host}/connect/${id}`
-        }
-      })
-    }
-
-    return initialState
   }
 
   /**
@@ -160,7 +80,7 @@ class UppyContainer extends Component {
     return () => {
       return provider.auth()
       .then((authed) => {
-        this._update(provider.id, { authed }, 'sources')
+        this.setIn(provider.id, { authed }, 'sources')
         return authed
       })
     }
@@ -179,7 +99,7 @@ class UppyContainer extends Component {
       .then((data) => {
         console.log(data)
         // const files = this.processFiles(data)
-        this._update(provider.id, { files: data.items }, 'sources')
+        this.setIn(provider.id, { files: data.items }, 'sources')
         return data
       })
     }
@@ -197,72 +117,15 @@ class UppyContainer extends Component {
       return provider.logout()
       .then((result) => {
         if (result.ok) {
-          this._update(provider.id, { 
+          this.setIn(provider.id, {
             authed: false,
             files: [],
-            folders: [] 
+            folders: []
           }, 'sources')
         }
 
         return result
       })
-    }
-  }
-
-
-  /**
-   * Webcam Plugin Wrappers
-   */
-
-  /**
-   * Starts webcam and adds video stream to state.
-   * @param  {Webcam} webcam Webcam plugin instance
-   * @return {fn}            Wrapped start method
-   */
-  startWebcam (webcam) {
-    return () => {
-      return webcam.start()
-      .then((stream) => {
-        this._update('webcam', { stream: stream }, 'sources')
-      })
-    }
-  }
-
-  /**
-   * Stops webcam and removes video stream from state.
-   * @param  {Webcam} webcam  Webcam plugin instance
-   * @return {fn}             Wrapped stop method
-   */
-  stopWebcam () {
-    return () => {
-      const {stream} = this.state.sources.webcam
-      const tracks = stream.getVideoTracks()
-
-      if (stream.stop) {
-        stream.stop()
-      } else if (stream.msStop) {
-        stream.msStop()
-      } else {
-        tracks[0].stop()
-        tracks.forEach((track) => {
-          track.stop()
-          stream.removeTrack(track)
-        })
-      }
-
-      this._update('webcam', { stream: null }, 'sources')
-      return true
-    }
-  }
-
-  /**
-   * Takes a snapshot from the webcam's video stream.
-   * @param  {Webcam} webcam  Webcam plugin instance
-   * @return {fn}             Wrapped takeSnapshot method
-   */
-  takeSnapshot (webcam) {
-    return () => {
-
     }
   }
 
@@ -273,7 +136,7 @@ class UppyContainer extends Component {
    * @param  {[type]} newState  Replaces old state at key
    * @param  {[type]} parentKey Key of parent if key is nested
    */
-  _update (key, newState, parentKey) {
+  setIn (key, newState, parentKey) {
     // TODO: Make deep nested updates prettier
     // TODO: Make nested updates infinitely deep
     if (parentKey) {
@@ -292,22 +155,6 @@ class UppyContainer extends Component {
         [key]: updatedState
       })
     }
-  }
-  
-  addFile (file) {
-    const {files} = this.state
-    this.setState({
-      files: files.concat([file])
-    })
-  }
-
-  removeFile (fileID) {
-    const {files} = this.state
-    const filteredFiles = files.filter((file) => file.id !== fileID)
-
-    this.setState({
-      files: filteredFiles
-    })
   }
 
   /**
