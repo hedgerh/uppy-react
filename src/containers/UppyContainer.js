@@ -5,26 +5,24 @@ import extend from '../utils/extend'
 class UppyContainer extends Component {
   constructor(props, context) {
     super(props, context)
-    this.addFile = this.addFile.bind(this)
-    this.auth = this.auth.bind(this)
-    this.getInitialProviderState = this.getInitialProviderState.bind(this)
+    this.getInitialState = this.getInitialState.bind(this)
     this.getUploader = this.getUploader.bind(this)
+    this.auth = this.auth.bind(this)
     this.list = this.list.bind(this)
     this.logout = this.logout.bind(this)
+    this.addFile = this.addFile.bind(this)
     this.removeFile = this.removeFile.bind(this)
     this.startUpload = this.startUpload.bind(this)
     this.validServerProps = this.validServerProps.bind(this)
-    this.startWebcam = this.startWebcam.bind(this)
-    this.stopWebcam = this.stopWebcam.bind(this)
-    this.takeSnapshot = this.takeSnapshot.bind(this)
-    this.setIn = this.setIn.bind(this)
+    this._setIn = this._setIn.bind(this)
 
     this.state = this.getInitialState()
   }
 
-  componentDidMount () {
-  }
-
+  /**
+   * Get the initial component state.
+   * @return {Object} The initial component state
+   */
   getInitialState () {
     let sourceState = {}
 
@@ -42,18 +40,6 @@ class UppyContainer extends Component {
     }
   }
 
-  // Initialization Helpers
-
-  /**
-   * Creates a new instance of the given Uploader plugin.
-   * @param  {Uploader} uploader  Uppy plugin of 'uploader' type
-   * @param  {String}   endpoint  Target endpoint for file uploads
-   * @return {Uploader}           Instance of given uploader plugin
-   */
-  getUploader (uploader) {
-
-  }
-
   /**
    * Checks if valid server props have been provided.
    * @param  {[type]} server [description]
@@ -66,12 +52,8 @@ class UppyContainer extends Component {
   }
 
   /**
-   * Uppy Server Helper Methods
-   */
-  /**
    * Checks authentication status of user with given provider.
    * Wraps Provider's `auth` method to handle updating state after calling.
-   * after calling.  
    * Wrapped method is passed down to user as props.
    * @param  {Provider} provider Provider plugin
    * @return {fn}                Wrapped auth fn
@@ -80,7 +62,7 @@ class UppyContainer extends Component {
     return () => {
       return provider.auth()
       .then((authed) => {
-        this.setIn(provider.id, { authed }, 'sources')
+        this._setIn('sources', provider.id, { authed })
         return authed
       })
     }
@@ -97,9 +79,7 @@ class UppyContainer extends Component {
     return (directory) => {
       return provider.list(directory)
       .then((data) => {
-        console.log(data)
-        // const files = this.processFiles(data)
-        this.setIn(provider.id, { files: data.items }, 'sources')
+        this._setIn('sources', provider.id, { files: data.items })
         return data
       })
     }
@@ -117,7 +97,7 @@ class UppyContainer extends Component {
       return provider.logout()
       .then((result) => {
         if (result.ok) {
-          this.setIn(provider.id, provider.getInitialState(), 'sources')
+          this._setIn('sources', provider.id, provider.getInitialState())
         }
 
         return result
@@ -126,31 +106,25 @@ class UppyContainer extends Component {
   }
 
   /**
-   * Wrapper for updating state, even state that is
-   * nested.
-   * @param  {String} key       State key to update
-   * @param  {[type]} newState  Replaces old state at key
-   * @param  {[type]} parentKey Key of parent if key is nested
+   * Add a file to upload
+   * @param {Object} file File to add
    */
-  setIn (key, newState, parentKey) {
-    // TODO: Make deep nested updates prettier
-    // TODO: Make nested updates infinitely deep
-    if (parentKey) {
-      const parent = this.state[parentKey]
-      const updatedState = extend(parent[key], newState)
+  addFile (file) {
+    this.setState({
+      files: this.state.files.concat([file])
+    })
+  } 
 
-      this.setState({
-        [parentKey]: extend(parent, {
-          [key]: updatedState
-        })
-      })
-    } else {
-      const updatedState = extend(this.state[key], newState)
+  /**
+   * Remove a file from upload queue.
+   * @param {String} id File ID to remove
+   */
+  removeFile (id) {
+    const files = this.state.files.filter((file) => {
+      return file.id !== id
+    })
 
-      this.setState({
-        [key]: updatedState
-      })
-    }
+    this.setState({ files })
   }
 
   /**
@@ -160,7 +134,33 @@ class UppyContainer extends Component {
   startUpload() {
     return this.uploader.start(this.state.files)
   }
-  
+
+  /**
+   * Helper for updating state, even state that is
+   * nested.
+   * @param  {String} key       State key to update
+   * @param  {[type]} newState  Replaces old state at key
+   * @param  {[type]} parentKey Key of parent if key is nested
+   */
+  _setIn (parentKey, key, newState) {
+    if (!parentKey) {
+      this.setState({
+        [key]: extend(this.state[key], newState)
+      })
+
+      return
+    }
+    
+    const parent = this.state[parentKey]
+    const updatedState = extend(parent[key], newState)
+
+    this.setState({
+      [parentKey]: extend(parent, {
+        [key]: updatedState
+      })
+    })
+  }
+
   render () {
     if (React.Children.count(this.props.children) > 1) {
       throw new Error('Uppy: UppyContainer should have no more than one child.')

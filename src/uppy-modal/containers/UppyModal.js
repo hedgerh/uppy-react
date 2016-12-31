@@ -5,22 +5,24 @@ import FileBrowser from '../components/FileBrowser'
 import Webcam from '../components/Webcam'
 // const { defaultIcon, dashboardIcon, webcamIcon, googleIcon } from '../components/icons'
 
+
+// TODO: Make tabs dynamic/use props instead of hard-coded.
 const _sources = {
   default: {
-    icon: 'foo'
+    icon: ''
   },
   dashboard: {
     name: 'Local Disk',
-    icon: 'foo'
+    icon: ''
   },
   webcam: {
     name: 'Webcam',
-    icon: 'foo',
+    icon: '',
     component: Webcam
   },
   google: {
     name: 'Google Drive',
-    icon: 'foo',
+    icon: '',
     component: FileBrowser
   }
 }

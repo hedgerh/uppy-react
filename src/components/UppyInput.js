@@ -6,6 +6,7 @@ class FormInput extends Component {
     super()
 
     this.addFile = this.addFile.bind(this)
+    this._getPropsToPass = this._getPropsToPass.bind(this)
   }
 
   addFile (event) {
@@ -24,15 +25,18 @@ class FormInput extends Component {
     })
   }
 
-  render () {
-    let propsToPass = {}
-
+  _getPropsToPass () {
     // filtering out the addFile and children props to pass to our input element
-    Object.keys(this.props).forEach((prop) => {
+    return Object.keys(this.props).forEach((prop) => {
       if (prop !== 'children' && prop !== 'addFile') {
         propsToPass[prop] = this.props[prop]
       }
     })
+  }
+
+  render () {
+    let propsToPass = this.getPropsToPass()
+
     return (
       <input 
         type='file'

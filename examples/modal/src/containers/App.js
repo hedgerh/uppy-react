@@ -1,7 +1,5 @@
 import React, { Component, PropTypes } from 'react'
-import UppyModal from '../u/containers/UppyModal'
-import FileBrowser from '../u/components/FileBrowser'
-// import UppyDashboard from '../u/containers/UppyDashboard'
+import UppyModal from '../../../../src/uppy-modal/containers/UppyModal'
 
 class App extends Component {
   constructor () {
@@ -37,7 +35,6 @@ class App extends Component {
   }
 
   render () {
-    console.log(this.props)
     return (
       <div>
         <button onClick={this.toggleModal}>Toggle Modal!</button>
